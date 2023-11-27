@@ -68,9 +68,9 @@ typedef void (*dump_func)(uint8_t, const uint8_t *, size_t);
 
 /* Ordered collection type */
 struct collection {
-    size_t n;			/* Elements in collection (not including 0) */
-    size_t s;			/* Elements allocated (not including 0) */
-    const void **p;		/* Element pointers */
+    size_t n;                   /* Elements in collection (not including 0) */
+    size_t s;                   /* Elements allocated (not including 0) */
+    const void **p;             /* Element pointers */
 };
 
 struct collection c_names, c_lsegs, c_groups, c_extsym;
@@ -85,16 +85,16 @@ static void nomem(void)
 static void add_collection(struct collection *c, const void *p)
 {
     if (c->n >= c->s) {
-	size_t cs = c->s ? (c->s << 1) : INIT_SIZE;
-	const void **cp = realloc(c->p, cs*sizeof(const void *));
+        size_t cs = c->s ? (c->s << 1) : INIT_SIZE;
+        const void **cp = realloc(c->p, cs*sizeof(const void *));
 
-	if (!cp)
-	    nomem();
+        if (!cp)
+            nomem();
 
-	c->p = cp;
-	c->s = cs;
+        c->p = cp;
+        c->s = cs;
 
-	memset(cp + c->n, 0, (cs - c->n)*sizeof(const void *));
+        memset(cp + c->n, 0, (cs - c->n)*sizeof(const void *));
     }
 
     c->p[++c->n] = p;
@@ -103,7 +103,7 @@ static void add_collection(struct collection *c, const void *p)
 static const void *get_collection(struct collection *c, size_t index)
 {
     if (index >= c->n)
-	return NULL;
+        return NULL;
 
     return c->p[index];
 }
@@ -114,23 +114,23 @@ static void hexdump_data(unsigned int offset, const uint8_t *data,
     unsigned int i, j;
 
     for (i = 0; i < n; i += 16) {
-	printf("   %04x: ", i+offset);
-	for (j = 0; j < 16; j++) {
+        printf("   %04x: ", i+offset);
+        for (j = 0; j < 16; j++) {
             char sep = (j == 7) ? '-' : ' ';
-	    if (i+j < field)
-		printf("%02x%c", data[i+j], sep);
-	    else if (i+j < n)
+            if (i+j < field)
+                printf("%02x%c", data[i+j], sep);
+            else if (i+j < n)
                 printf("xx%c", sep); /* Beyond end of... */
             else
-		printf("   ");  /* No separator */
-	}
-	printf(" :  ");
-	for (j = 0; j < 16; j++) {
+                printf("   ");  /* No separator */
+        }
+        printf(" :  ");
+        for (j = 0; j < 16; j++) {
             if (i+j < n)
                 putchar((i+j >= field) ? 'x' :
                         isprint(data[i+j]) ? data[i+j] : '.');
-	}
-	putchar('\n');
+        }
+        putchar('\n');
     }
 }
 
@@ -169,47 +169,47 @@ static void dump_coment(uint8_t type, const uint8_t *data, size_t n)
 {
     uint8_t class;
     static const char *coment_class[256] = {
-	[0x00] = "Translator",
-	[0x01] = "Copyright",
-	[0x81] = "Library specifier",
-	[0x9c] = "MS-DOS version",
-	[0x9d] = "Memory model",
-	[0x9e] = "DOSSEG",
-	[0x9f] = "Library search",
-	[0xa0] = "OMF extensions",
-	[0xa1] = "New OMF extension",
-	[0xa2] = "Link pass separator",
-	[0xa3] = "LIBMOD",
-	[0xa4] = "EXESTR",
-	[0xa6] = "INCERR",
-	[0xa7] = "NOPAD",
-	[0xa8] = "WKEXT",
-	[0xa9] = "LZEXT",
-	[0xda] = "Comment",
-	[0xdb] = "Compiler",
-	[0xdc] = "Date",
-	[0xdd] = "Timestamp",
-	[0xdf] = "User",
+        [0x00] = "Translator",
+        [0x01] = "Copyright",
+        [0x81] = "Library specifier",
+        [0x9c] = "MS-DOS version",
+        [0x9d] = "Memory model",
+        [0x9e] = "DOSSEG",
+        [0x9f] = "Library search",
+        [0xa0] = "OMF extensions",
+        [0xa1] = "New OMF extension",
+        [0xa2] = "Link pass separator",
+        [0xa3] = "LIBMOD",
+        [0xa4] = "EXESTR",
+        [0xa6] = "INCERR",
+        [0xa7] = "NOPAD",
+        [0xa8] = "WKEXT",
+        [0xa9] = "LZEXT",
+        [0xda] = "Comment",
+        [0xdb] = "Compiler",
+        [0xdc] = "Date",
+        [0xdd] = "Timestamp",
+        [0xdf] = "User",
         [0xe3] = "Type definition",
         [0xe8] = "Filename",
-	[0xe9] = "Dependency file",
-	[0xff] = "Command line"
+        [0xe9] = "Dependency file",
+        [0xff] = "Command line"
     };
 
     if (n < 2) {
-	hexdump_data(type, data, 2, n);
-	return;
+        hexdump_data(type, data, 2, n);
+        return;
     }
 
     type  = data[0];
     class = data[1];
 
     printf("   [NP=%d NL=%d UD=%02X] %02X %s\n",
-	   (type >> 7) & 1,
-	   (type >> 6) & 1,
-	   type & 0x3f,
-	   class,
-	   coment_class[class] ? coment_class[class] : "???");
+           (type >> 7) & 1,
+           (type >> 6) & 1,
+           type & 0x3f,
+           class,
+           coment_class[class] ? coment_class[class] : "???");
 
     if (dump_coment_class[class])
         dump_coment_class[class](class, data+2, n-2);
@@ -254,13 +254,13 @@ char *lname(int index)
     size_t len;
 
     if (!p)
-	return NULL;
+        return NULL;
 
     len = (uint8_t)p[0];
 
     s = malloc(len+1);
     if (!s)
-	nomem();
+        nomem();
 
     memcpy(s, p+1, len);
     s[len] = '\0';
@@ -277,13 +277,13 @@ static void dump_lnames(uint8_t type, const uint8_t *data, size_t n)
     while (p < end) {
         size_t l = *p+1;
         if (l > n) {
-	    add_collection(&c_names, NULL);
+            add_collection(&c_names, NULL);
             printf("   # %4u 0x%04x: \"%.*s... <%zu missing bytes>\n",
                    c_names.n, c_names.n, n-1, p+1, l-n);
         } else {
-	    add_collection(&c_names, p);
+            add_collection(&c_names, p);
             printf("   # %4u 0x%04x: \"%.*s\"\n",
-		   c_names.n, c_names.n, l-1, p+1);
+                   c_names.n, c_names.n, l-1, p+1);
         }
         hexdump_data(p-data, p, l, n);
         p += l;
@@ -299,56 +299,56 @@ static void dump_segdef(uint8_t type, const uint8_t *data, size_t n)
     const uint8_t *end = data+n;
     uint8_t attr;
     static const char * const alignment[8] =
-	{ "ABS", "BYTE", "WORD", "PARA", "PAGE", "DWORD", "LTL", "?ALIGN" };
+        { "ABS", "BYTE", "WORD", "PARA", "PAGE", "DWORD", "LTL", "?ALIGN" };
     static const char * const combine[8] =
-	{ "PRIVATE", "?COMMON", "PUBLIC", "?COMBINE", "?PUBLIC", "STACK", "COMMON", "?PUBLIC" };
+        { "PRIVATE", "?COMMON", "PUBLIC", "?COMBINE", "?PUBLIC", "STACK", "COMMON", "?PUBLIC" };
     uint16_t idx;
     char *s;
 
     if (p >= end)
-	return;
+        return;
 
     attr = *p++;
 
     printf("   # %s (A%u) %s (C%u) %s%s",
-	   alignment[(attr >> 5) & 7], (attr >> 5) & 7,
-	   combine[(attr >> 2) & 7], (attr >> 2) & 7,
-	   (attr & 0x02) ? "MAXSIZE " : "",
-	   (attr & 0x01) ? "USE32" : "USE16");
+           alignment[(attr >> 5) & 7], (attr >> 5) & 7,
+           combine[(attr >> 2) & 7], (attr >> 2) & 7,
+           (attr & 0x02) ? "MAXSIZE " : "",
+           (attr & 0x01) ? "USE32" : "USE16");
 
     if (((attr >> 5) & 7) == 0) {
-	/* Absolute segment */
-	if (p+3 > end)
-	    goto dump;
-	printf(" AT %04x:", get_16(&p));
-	printf("%02x", *p++);
+        /* Absolute segment */
+        if (p+3 > end)
+            goto dump;
+        printf(" AT %04x:", get_16(&p));
+        printf("%02x", *p++);
     }
 
     if (big) {
-	if (p+4 > end)
-	    goto dump;
-	printf(" size 0x%08x", get_32(&p));
+        if (p+4 > end)
+            goto dump;
+        printf(" size 0x%08x", get_32(&p));
     } else {
-	if (p+2 > end)
-	    goto dump;
-	printf(" size 0x%04x", get_16(&p));
+        if (p+2 > end)
+            goto dump;
+        printf(" size 0x%04x", get_16(&p));
     }
 
     idx = get_index(&p);
     if (p > end)
-	goto dump;
+        goto dump;
     s = lname(idx);
     printf(" name '%s'", s);
 
     idx = get_index(&p);
     if (p > end)
-	goto dump;
+        goto dump;
     s = lname(idx);
     printf(" class '%s'", s);
 
     idx = get_index(&p);
     if (p > end)
-	goto dump;
+        goto dump;
     s = lname(idx);
     printf(" ovl '%s'", s);
 
@@ -471,42 +471,42 @@ int dump_omf(FILE *f)
 
     p = data;
     while (len >= 3) {
-	uint8_t csum;
-	int i;
+        uint8_t csum;
+        int i;
 
-	type = p[0];
-	n = *(uint16_t *)(p+1);
+        type = p[0];
+        n = *(uint16_t *)(p+1);
 
-	printf("%02x %-10s %4zd bytes",
-	       type,
-	       record_types[type] ? record_types[type] : "???",
-	       n);
+        printf("%02x %-10s %4zd bytes",
+               type,
+               record_types[type] ? record_types[type] : "???",
+               n);
 
-	if (len < n+3) {
-	    printf("\n  (truncated, only %zd bytes left)\n", len-3);
-	    break;		/* Truncated */
-	}
+        if (len < n+3) {
+            printf("\n  (truncated, only %zd bytes left)\n", len-3);
+            break;              /* Truncated */
+        }
 
-	p += 3;	      /* Header doesn't count in the length */
-	n--;	      /* Remove checksum byte */
+        p += 3;       /* Header doesn't count in the length */
+        n--;          /* Remove checksum byte */
 
-	csum = 0;
-	for (i = -3; i < (int)n; i++)
-	    csum -= p[i];
+        csum = 0;
+        for (i = -3; i < (int)n; i++)
+            csum -= p[i];
 
-	printf(", checksum %02X", p[i]);
-	if (csum == p[i])
-	    printf(" (valid)\n");
-	else
-	    printf(" (actual = %02X)\n", csum);
+        printf(", checksum %02X", p[i]);
+        if (csum == p[i])
+            printf(" (valid)\n");
+        else
+            printf(" (actual = %02X)\n", csum);
 
-	if (dump_type[type])
-	    dump_type[type](type, p, n);
-	else
-	    dump_unknown(type, p, n);
+        if (dump_type[type])
+            dump_type[type](type, p, n);
+        else
+            dump_unknown(type, p, n);
 
-	p   += n+1;
-	len -= (n+4);
+        p   += n+1;
+        len -= (n+4);
     }
 
     free((void*)data);
@@ -521,12 +521,12 @@ int main(int argc, char *argv[])
     progname = argv[0];
 
     for (i = 1; i < argc; i++) {
-	f = fopen(argv[i], "rb");
-	if (f == NULL || dump_omf(f)) {
-	    perror(argv[i]);
-	    return 1;
-	}
-	fclose(f);
+        f = fopen(argv[i], "rb");
+        if (f == NULL || dump_omf(f)) {
+            perror(argv[i]);
+            return 1;
+        }
+        fclose(f);
     }
 
     return 0;
