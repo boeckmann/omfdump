@@ -7,6 +7,8 @@
  * C compiler which handles basic C99.
  * 
  * based on the NASM omfdump utility
+ *
+ * see LICENCE file for licensing terms
  */
 
 #include <stdio.h>
