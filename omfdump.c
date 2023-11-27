@@ -401,24 +401,28 @@ static void dump_fixupp(uint8_t type, const uint8_t *data, size_t n)
                    ((op & 3) << 8) + *p++);
 
             fix = *p++;
+
             printf("\n          frame %s%d%s",
-                   (fix & 0x80) ? "thread " : "F",
+                   (fix & 0x80) ? "thread " : "method F",
                    ((fix & 0x70) >> 4),
                    ((fix & 0xc0) == 0xc0) ? "?" : "");
 
-            if ((fix & 0xc0) == 0)
+            if ((fix & 0xc0) == 0) {            
                 printf(" datum 0x%04x", get_index(&p));
+            }
 
             printf("\n          target %s%d",
-                   (fix & 0x10) ? "thread " : "method T",
+                   (fix & 0x08) ? "thread " : "method T",
                    fix & 3);
 
             if ((fix & 0x10) == 0)
                 printf(" (%s)", method_base[fix & 3]);
 
-            printf(" datum 0x%04x", get_index(&p));
 
-            if ((fix & 0x08) == 0) {
+            if ((fix & 0x08) == 0) {            
+                printf(" datum 0x%04x", get_index(&p));
+            }
+            if ((fix & 0x04) == 0) {
                 if (big) {
                     printf(" disp 0x%08x", get_32(&p));
                 } else {
