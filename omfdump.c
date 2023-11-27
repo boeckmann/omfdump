@@ -5,17 +5,16 @@
  *
  * This assumes a littleendian, unaligned-load-capable host and a
  * C compiler which handles basic C99.
+ * 
+ * based on the NASM omfdump utility
  */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <inttypes.h>
 #include <ctype.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <stdbool.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 
 const char *progname;
 
@@ -356,14 +355,18 @@ dump:
     hexdump_data(0, data, n, n);
 }
 
+
 /* FIXUPP16 or FIXUPP32 */
 static void dump_fixupp(uint8_t type, const uint8_t *data, size_t n)
 {
     bool big = type & 1;
     const uint8_t *p = data;
     const uint8_t *end = data + n;
-    static const char * const method_base[4] =
-        { "SEGDEF", "GRPDEF", "EXTDEF", "frame#" };
+    static const char * const method_base[16] =
+        { "SEGDEF", "GRPDEF", "EXTDEF", "frame#",
+          "SEGDEF idx", "GRPDEF idx", "EXTDEF idx", "unsupported",
+          "SEGDEF", "GRPDEF", "EXTDEF", "frame#",
+          "DATA SEG idx", "TARGET SEG/GRP idx", "invalid", "unsupported" };
 
     while (p < end) {
         const uint8_t *start = p;
@@ -379,7 +382,8 @@ static void dump_fixupp(uint8_t type, const uint8_t *data, size_t n)
                    frame ? "frame" : "target", op & 3,
                    (op & 0x20) ? " +flag5?" : "",
                    (op & 0x40) ? 'F' : 'T',
-                   op & 3, method_base[op & 3]);
+                   ((op & 0x1c) >> 2),
+                   method_base[((op & 0x40) >> 3) | ((op & 0x1c) >> 2)]);
 
             if ((op & 0x50) != 0x50) {
                 printf(" index 0x%04x", get_index(&p));
@@ -436,21 +440,32 @@ static const dump_func dump_type[256] =
     [0xca] = dump_lnames,
 };
 
-int dump_omf(int fd)
+static uint8_t* read_file( FILE* f, size_t *sz ) {
+   size_t size;
+   char* buf;
+
+   fseek( f, 0, SEEK_END );
+   size = ftell( f );
+   fseek( f, 0, SEEK_SET );
+
+   buf = malloc( size );
+   if ( !buf )
+      return NULL;
+   fread( buf, 1, size, f );
+   *sz = size;
+
+   return buf;
+}
+
+int dump_omf(FILE *f)
 {
-    struct stat st;
     size_t len, n;
     uint8_t type;
     const uint8_t *p, *data;
 
-    if (fstat(fd, &st))
-	return -1;
+    data = read_file(f, &len);
 
-    len = st.st_size;
-
-    data = mmap(NULL, len, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (data == MAP_FAILED)
-	return -1;
+    if (!data) return -1;
 
     p = data;
     while (len >= 3) {
@@ -492,24 +507,24 @@ int dump_omf(int fd)
 	len -= (n+4);
     }
 
-    munmap((void *)data, st.st_size);
+    free((void*)data);
     return 0;
 }
 
 int main(int argc, char *argv[])
 {
-    int fd;
+    FILE *f;
     int i;
 
     progname = argv[0];
 
     for (i = 1; i < argc; i++) {
-	fd = open(argv[i], O_RDONLY);
-	if (fd < 0 || dump_omf(fd)) {
+	f = fopen(argv[i], "rb");
+	if (f == NULL || dump_omf(f)) {
 	    perror(argv[i]);
 	    return 1;
 	}
-	close(fd);
+	fclose(f);
     }
 
     return 0;
