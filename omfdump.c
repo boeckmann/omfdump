@@ -366,9 +366,9 @@ static void dump_fixupp(uint8_t type, const uint8_t *data, size_t n)
     const uint8_t *end = data + n;
     static const char * const method_base[16] =
         { "SEGDEF", "GRPDEF", "EXTDEF", "frame#",
-          "SEGDEF idx", "GRPDEF idx", "EXTDEF idx", "unsupported",
+          "SEGDEF", "GRPDEF", "EXTDEF", "unsupported",
           "SEGDEF", "GRPDEF", "EXTDEF", "frame#",
-          "DATA SEG idx", "TARGET SEG/GRP idx", "invalid", "unsupported" };
+          "prev. LEDATA SEG index", "TARGET index", "invalid", "unsupported" };
 
     while (p < end) {
         const uint8_t *start = p;
@@ -407,20 +407,23 @@ static void dump_fixupp(uint8_t type, const uint8_t *data, size_t n)
                    ((fix & 0x70) >> 4),
                    ((fix & 0xc0) == 0xc0) ? "?" : "");
 
+            if ((fix & 0x80) == 0)
+                printf(" (%s)", method_base[((fix >> 4) & 7) + 8]);
+
             if ((fix & 0xc0) == 0) {            
-                printf(" datum 0x%04x", get_index(&p));
+                printf(" index 0x%04x", get_index(&p));
             }
 
             printf("\n          target %s%d",
                    (fix & 0x08) ? "thread " : "method T",
                    fix & 3);
 
-            if ((fix & 0x10) == 0)
-                printf(" (%s)", method_base[fix & 3]);
+            if ((fix & 0x08) == 0)
+                printf(" (%s)", method_base[(fix & 7)]);
 
 
             if ((fix & 0x08) == 0) {            
-                printf(" datum 0x%04x", get_index(&p));
+                printf(" index 0x%04x", get_index(&p));
             }
             if ((fix & 0x04) == 0) {
                 if (big) {
