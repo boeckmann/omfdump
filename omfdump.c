@@ -155,7 +155,7 @@ static void dump_coment_depfile(uint8_t type, const uint8_t *data, size_t n)
     if (n > 4 && data[4] == n-5) {
         printf("   # ");
         print_dostime(data);
-        printf("  %.*s\n", n-5, data+5);
+        printf("  %.*s\n", (int)(n-5), data+5);
     }
 
     hexdump_data(2, data, n, n);
@@ -278,12 +278,12 @@ static void dump_lnames(uint8_t type, const uint8_t *data, size_t n)
         size_t l = *p+1;
         if (l > n) {
             add_collection(&c_names, NULL);
-            printf("   # %4u 0x%04x: \"%.*s... <%zu missing bytes>\n",
-                   c_names.n, c_names.n, n-1, p+1, l-n);
+            printf("   # %4zu 0x%04zx: \"%.*s... <%zu missing bytes>\n",
+                   c_names.n, c_names.n, (int)(n-1), p+1, l-n);
         } else {
             add_collection(&c_names, p);
-            printf("   # %4u 0x%04x: \"%.*s\"\n",
-                   c_names.n, c_names.n, l-1, p+1);
+            printf("   # %4zu 0x%04zx: \"%.*s\"\n",
+                   c_names.n, c_names.n, (int)(l-1), p+1);
         }
         hexdump_data(p-data, p, l, n);
         p += l;
@@ -364,11 +364,19 @@ static void dump_fixupp(uint8_t type, const uint8_t *data, size_t n)
     bool big = type & 1;
     const uint8_t *p = data;
     const uint8_t *end = data + n;
-    static const char * const method_base[16] =
-        { "SEGDEF", "GRPDEF", "EXTDEF", "frame#",
-          "SEGDEF", "GRPDEF", "EXTDEF", "unsupported",
-          "SEGDEF", "GRPDEF", "EXTDEF", "frame#",
-          "prev. LEDATA SEG index", "TARGET index", "invalid", "unsupported" };
+
+    static const char *location_descr[16] = {
+        "low-order byte", "16-bit offset", "16-bit segment", "32-bit far ptr",
+        "hi-order byte", "16-bit ldr-resolved offset", "reserved", "reserved",
+        "32-bit offset", "unknown", "48-bit ptr", "unknown",
+        "32-bit ldr-resolved offset", "unknown", "unknown"
+    };
+    static const char * const method_base[16] = {
+        "SEGDEF", "GRPDEF", "EXTDEF", "frame#",
+        "SEGDEF", "GRPDEF", "EXTDEF", "unsupported",
+        "SEGDEF", "GRPDEF", "EXTDEF", "frame#",
+        "prev. LEDATA SEG index", "TARGET index", "invalid", "unsupported"
+    };
 
     while (p < end) {
         const uint8_t *start = p;
@@ -395,9 +403,10 @@ static void dump_fixupp(uint8_t type, const uint8_t *data, size_t n)
             /* FIXUP subrecord */
             uint8_t fix;
 
-            printf("   FIXUP  %s-rel location %2d offset 0x%03x",
+            printf("   FIXUP  %s-rel, type %d (%s), rec-offset 0x%03x",
                    (op & 0x40) ? "seg" : "self",
                    (op & 0x3c) >> 2,
+                   location_descr[(op & 0x3c) >> 2],
                    ((op & 3) << 8) + *p++);
 
             fix = *p++;
@@ -451,7 +460,7 @@ static const dump_func dump_type[256] =
 
 static uint8_t* read_file( FILE* f, size_t *sz ) {
    size_t size;
-   char* buf;
+   uint8_t* buf;
 
    fseek( f, 0, SEEK_END );
    size = ftell( f );
