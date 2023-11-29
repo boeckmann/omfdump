@@ -1,0 +1,15 @@
+Begin3
+Title: OMFDUMP
+Version: 20231129
+Entered-date: 2023-11-29
+Description: dump utility for object module files (.OBJ)
+Keywords:
+Author: bernd-github@boeckmann.io (Bernd Boeckmann), the NASM Authors        
+Maintained-by:
+Primary-site: https://github.com/boeckmann/omfdump  
+Alternate-site:
+Original-site: 
+Platforms:
+Copying-policy: BSD-2
+Hwreq: 8086
+End

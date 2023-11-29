@@ -260,7 +260,7 @@ static void dump_lnames(uint8_t type, const uint8_t *data, size_t n)
     uint8_t *s;
 
     while (p < end) {
-        size_t l = *p+1;
+        size_t l = *p;
         if (l > n) {
             s = malloc(n+1);
             memcpy(s, p+1, n);
@@ -269,17 +269,17 @@ static void dump_lnames(uint8_t type, const uint8_t *data, size_t n)
             printf("   # %4zu 0x%04zx: \"%.*s... <%zu missing bytes>\n",
                    c_names.n, c_names.n, (int)(n-1), p+1, l-n);
         } else {
-            s = malloc(l);
-            memcpy(s, p+1, l-1);
+            s = malloc(l+1);
+            memcpy(s, p+1, l);
             s[l] = '\0';
             add_collection(&c_names, s);
 
             printf("   # %4zu 0x%04zx: \"%s\"\n",
                    c_names.n, c_names.n, s);
         }
-        hexdump_data(p-data, p, l, n);
-        p += l;
-        n -= l;
+        hexdump_data(p-data, p, l+1, n);
+        p += l+1;
+        n -= l+1;
     }
 }
 
