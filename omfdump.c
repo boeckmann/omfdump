@@ -70,7 +70,7 @@ typedef void (*dump_func)(uint8_t, const uint8_t *, size_t);
 struct collection {
     size_t n;                   /* Elements in collection (not including 0) */
     size_t s;                   /* Elements allocated (not including 0) */
-    const void **p;             /* Element pointers */
+    void const** p;                   /* Element pointers */
 };
 
 struct collection c_names, c_lsegs, c_groups, c_extsym;
@@ -86,26 +86,25 @@ static void add_collection(struct collection *c, const void *p)
 {
     if (c->n >= c->s) {
         size_t cs = c->s ? (c->s << 1) : INIT_SIZE;
-        const void **cp = realloc(c->p, cs*sizeof(const void *));
+        void const **cp = realloc(c->p, cs*sizeof(const void *));
 
         if (!cp)
             nomem();
 
         c->p = cp;
         c->s = cs;
-
-        memset(cp + c->n, 0, (cs - c->n)*sizeof(const void *));
     }
 
-    c->p[++c->n] = p;
+    c->p[c->n] = p;
+    c->n++;
 }
 
 static const void *get_collection(struct collection *c, size_t index)
 {
-    if (index >= c->n)
+    if (index == 0 || index > c->n)
         return NULL;
 
-    return c->p[index];
+    return c->p[index-1];
 }
 
 static void hexdump_data(unsigned int offset, const uint8_t *data,
@@ -247,25 +246,10 @@ static uint32_t get_32(const uint8_t **pp)
 }
 
 /* Returns a name as a C string in a newly allocated buffer */
-char *lname(int index)
+const char *lname(int index)
 {
-    char *s;
-    const char *p = get_collection(&c_names, index);
-    size_t len;
-
-    if (!p)
-        return NULL;
-
-    len = (uint8_t)p[0];
-
-    s = malloc(len+1);
-    if (!s)
-        nomem();
-
-    memcpy(s, p+1, len);
-    s[len] = '\0';
-
-    return s;
+    if (!index) return "''";
+    return get_collection(&c_names, index);
 }
 
 /* LNAMES or LLNAMES */
@@ -273,23 +257,37 @@ static void dump_lnames(uint8_t type, const uint8_t *data, size_t n)
 {
     const uint8_t *p = data;
     const uint8_t *end = data + n;
+    uint8_t *s;
 
     while (p < end) {
         size_t l = *p+1;
         if (l > n) {
-            add_collection(&c_names, NULL);
+            s = malloc(n+1);
+            memcpy(s, p+1, n);
+            s[n] = '\0';
+            add_collection(&c_names, s);
             printf("   # %4zu 0x%04zx: \"%.*s... <%zu missing bytes>\n",
                    c_names.n, c_names.n, (int)(n-1), p+1, l-n);
         } else {
-            add_collection(&c_names, p);
-            printf("   # %4zu 0x%04zx: \"%.*s\"\n",
-                   c_names.n, c_names.n, (int)(l-1), p+1);
+            s = malloc(l);
+            memcpy(s, p+1, l-1);
+            s[l] = '\0';
+            add_collection(&c_names, s);
+
+            printf("   # %4zu 0x%04zx: \"%s\"\n",
+                   c_names.n, c_names.n, s);
         }
         hexdump_data(p-data, p, l, n);
         p += l;
         n -= l;
     }
 }
+
+typedef struct {
+    uint16_t name_idx;
+    uint16_t class_idx;
+    uint16_t ovl_idx;
+} segdef_t;
 
 /* SEGDEF16 or SEGDEF32 */
 static void dump_segdef(uint8_t type, const uint8_t *data, size_t n)
@@ -303,11 +301,16 @@ static void dump_segdef(uint8_t type, const uint8_t *data, size_t n)
     static const char * const combine[8] =
         { "PRIVATE", "?COMMON", "PUBLIC", "?COMBINE", "?PUBLIC", "STACK", "COMMON", "?PUBLIC" };
     uint16_t idx;
-    char *s;
+    const char *s;
+
+    segdef_t *seg = malloc(sizeof(segdef_t));
+    if (seg == NULL) {
+        nomem();
+    }
 
     if (p >= end)
         return;
-
+    
     attr = *p++;
 
     printf("   # %s (A%u) %s (C%u) %s%s",
@@ -334,27 +337,38 @@ static void dump_segdef(uint8_t type, const uint8_t *data, size_t n)
         printf(" size 0x%04x", get_16(&p));
     }
 
-    idx = get_index(&p);
+    seg->name_idx = get_index(&p);
     if (p > end)
         goto dump;
-    s = lname(idx);
+    s = lname(seg->name_idx);
     printf(" name '%s'", s);
 
-    idx = get_index(&p);
+    seg->class_idx = get_index(&p);
     if (p > end)
         goto dump;
-    s = lname(idx);
+    s = lname(seg->class_idx);
     printf(" class '%s'", s);
 
-    idx = get_index(&p);
+    seg->ovl_idx = get_index(&p);
     if (p > end)
         goto dump;
-    s = lname(idx);
+    s = lname(seg->ovl_idx);
     printf(" ovl '%s'", s);
+
+    add_collection(&c_lsegs, seg);
 
 dump:
     putchar('\n');
     hexdump_data(0, data, n, n);
+}
+
+
+const char *segment_name(uint16_t segment_idx)
+{
+    const segdef_t *seg;
+    if (segment_idx == 0) return "";
+    seg = get_collection(&c_lsegs, segment_idx);
+    return lname(seg->name_idx);
 }
 
 
@@ -403,8 +417,9 @@ static void dump_fixupp(uint8_t type, const uint8_t *data, size_t n)
             /* FIXUP subrecord */
             uint8_t fix;
 
-            printf("   FIXUP  %s-rel, type %d (%s), rec-offset 0x%03x",
-                   (op & 0x40) ? "seg" : "self",
+            printf("   FIXUP  %s-relative, type %d (%s)\n          "
+                   "record offset 0x%03x",
+                   (op & 0x40) ? "segment" : "self",
                    (op & 0x3c) >> 2,
                    location_descr[(op & 0x3c) >> 2],
                    ((op & 3) << 8) + *p++);
@@ -447,6 +462,34 @@ static void dump_fixupp(uint8_t type, const uint8_t *data, size_t n)
     }
 }
 
+
+static void dump_ledata(uint8_t type, const uint8_t *data, size_t n)
+{
+    bool big = type & 1;
+    const uint8_t *p = data;
+    const segdef_t *seg = get_collection(&c_lsegs, get_index(&p));
+    const char *seg_name = lname(seg->name_idx);
+    size_t data_len;
+
+    if (seg_name != NULL) {
+        printf("                segment '%s', ", seg_name);
+    }
+    else {
+        printf("                segment '(null)', ");
+    }
+
+    if (big) {
+        printf("offset %08x\n", get_32(&p));
+    }
+    else {
+        printf("offset %04x\n", get_16(&p));        
+    }
+
+    data_len = n - (p - data);
+    hexdump_data(0, p, data_len, data_len);
+}
+
+
 static const dump_func dump_type[256] =
 {
     [0x88] = dump_coment,
@@ -455,6 +498,8 @@ static const dump_func dump_type[256] =
     [0x99] = dump_segdef,
     [0x9c] = dump_fixupp,
     [0x9d] = dump_fixupp,
+    [0xa0] = dump_ledata,
+    [0xa1] = dump_ledata,
     [0xca] = dump_lnames,
 };
 
@@ -535,6 +580,12 @@ int main(int argc, char *argv[])
     int i;
 
     progname = argv[0];
+
+    if (argc < 2) {
+        puts("OMFDUMP - dump contents of object module files to stdout\n");
+        puts("Usage: OMFDUMP.EXE file...");
+        return 0;
+    }
 
     for (i = 1; i < argc; i++) {
         f = fopen(argv[i], "rb");
