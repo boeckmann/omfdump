@@ -440,7 +440,7 @@ static void dump_fixupp(uint8_t type, const uint8_t *data, size_t n)
 
             printf("\n          target %s%d",
                    (fix & 0x08) ? "thread " : "method T",
-                   fix & 3);
+                   fix & 7);
 
             if ((fix & 0x08) == 0)
                 printf(" (%s)", method_base[(fix & 7)]);
