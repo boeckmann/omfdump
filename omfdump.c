@@ -288,6 +288,31 @@ const char *lname(int index)
 }
 
 
+const char *segment_name(uint16_t segment_idx)
+{
+    const segdef_t *seg;
+    if (segment_idx == 0) return "";
+    seg = get_collection(&c_lsegs, segment_idx);
+    return lname(seg->name_idx);
+}
+
+
+const char *group_name(uint16_t group_idx)
+{
+    const grpdef_t *grp;
+    if (group_idx == 0) return "";
+    grp = get_collection(&c_groups, group_idx);
+    return lname(grp->name_idx);
+}
+
+
+const char *external_name(uint16_t idx) {
+    const char *name = get_collection(&c_extsym, idx);
+    if (!name) return "";
+    return name;
+}
+
+
 /* LNAMES or LLNAMES */
 static void dump_lnames(uint8_t type, const uint8_t *data, size_t n)
 {
@@ -424,43 +449,20 @@ static void dump_grpdef(uint8_t type, const uint8_t *data, size_t n)
 
     while ( p < end ) {
         if ( *p == 0xff ) {     /* segment */
-            printf("     segment ");
+            p++;
+            printf("     segment '%s'\n", segment_name(get_index(&p)));
         }
         else if ( *p == 0xfe) {
-            printf("     external ");
+            p++;
+            name_idx = get_index(&p);
+            s = lname(name_idx);
+            printf("     external '%s'\n", s);
         }
         else goto dump;
-        
-        p++;
-        name_idx = get_index(&p);
-        s = lname(name_idx);
-        printf("'%s'\n", s);
     }
 
 dump:
     hexdump_data(0, data, n, n);
-}
-
-const char *segment_name(uint16_t segment_idx)
-{
-    const segdef_t *seg;
-    if (segment_idx == 0) return "";
-    seg = get_collection(&c_lsegs, segment_idx);
-    return lname(seg->name_idx);
-}
-
-const char *group_name(uint16_t group_idx)
-{
-    const grpdef_t *grp;
-    if (group_idx == 0) return "";
-    grp = get_collection(&c_groups, group_idx);
-    return lname(grp->name_idx);
-}
-
-const char *external_name(uint16_t idx) {
-    const char *name = get_collection(&c_extsym, idx);
-    if (!name) return "";
-    return name;
 }
 
 
