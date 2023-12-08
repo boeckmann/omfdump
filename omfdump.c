@@ -466,26 +466,91 @@ dump:
 }
 
 
+static const char * const method_base[16] = {
+    "SEGDEF", "GRPDEF", "EXTDEF", "frame#",
+    "SEGDEF", "GRPDEF", "EXTDEF", "unsupported",
+    "SEGDEF", "GRPDEF", "EXTDEF", "frame#",
+    "prev. LEDATA SEG index", "TARGET index", "invalid", "unsupported"
+};
+
+
+static const char *location_descr[16] = {
+    "low-order byte", "16-bit offset", "16-bit segment", "32-bit far ptr",
+    "hi-order byte", "16-bit ldr-resolved offset", "reserved", "reserved",
+    "unknown", "32-bit offset", "unknown", "48-bit ptr", "unknown",
+    "32-bit ldr-resolved offset", "unknown", "unknown"
+};
+
+
+/* helper routine used in fixup and modend dumps */
+static void dump_fixdat(bool big, const uint8_t **data)
+{
+    const uint8_t *p = *data;
+
+    uint8_t fix;
+    uint16_t idx;
+
+    fix = *p++;
+
+    /* frame decoding */
+    printf("\n          frame %s%d%s",
+           (fix & 0x80) ? "thread " : "method F",
+           ((fix & 0x70) >> 4),
+           ((fix & 0xc0) == 0xc0) ? "?" : "");
+    if ((fix & 0x80) == 0)
+        printf(" (%s)", method_base[((fix >> 4) & 7) + 8]);
+    if ((fix & 0xc0) == 0) {
+        idx = get_index(&p);
+        printf(" index %04x", idx);
+        if ((fix >> 4) == 0) {
+            printf(" '%s'", segment_name(idx));                    
+        }
+        else if ((fix >> 4) == 1) {
+            printf(" '%s'", group_name(idx));                      
+        }
+        else if ((fix >> 4) == 2) {
+            printf(" '%s'", external_name(idx));                    
+        }
+    }
+    
+    /* target decoding */
+    printf("\n          target %s%d",
+           (fix & 0x08) ? "thread " : "method T",
+           fix & 7);
+    if ((fix & 0x08) == 0)
+        printf(" (%s)", method_base[(fix & 7)]);
+    if ((fix & 0x08) == 0) {
+        idx = get_index(&p);         
+        printf(" index %04x", idx);
+        if ((fix & 3) == 0) {
+            printf(" '%s'", segment_name(idx));
+        }
+        else if ((fix & 3) == 1) {
+            printf(" '%s'", group_name(idx));                    
+        }
+        else if ((fix & 3) == 2) {
+            printf(" '%s'", external_name(idx));
+        }
+    }
+    if ((fix & 0x04) == 0) {
+        if (big) {
+            printf(" disp %08x", get_32(&p));
+        } else {
+            printf(" disp %04x", get_16(&p));
+        }
+    }
+    putchar('\n');
+
+    *data = p;
+}
+
+
 /* FIXUPP16 or FIXUPP32 */
 static void dump_fixupp(uint8_t type, const uint8_t *data, size_t n)
 {
     bool big = type & 1;
     const uint8_t *p = data;
     const uint8_t *end = data + n;
-    uint16_t idx;
-
-    static const char *location_descr[16] = {
-        "low-order byte", "16-bit offset", "16-bit segment", "32-bit far ptr",
-        "hi-order byte", "16-bit ldr-resolved offset", "reserved", "reserved",
-        "unknown", "32-bit offset", "unknown", "48-bit ptr", "unknown",
-        "32-bit ldr-resolved offset", "unknown", "unknown"
-    };
-    static const char * const method_base[16] = {
-        "SEGDEF", "GRPDEF", "EXTDEF", "frame#",
-        "SEGDEF", "GRPDEF", "EXTDEF", "unsupported",
-        "SEGDEF", "GRPDEF", "EXTDEF", "frame#",
-        "prev. LEDATA SEG index", "TARGET index", "invalid", "unsupported"
-    };
 
     while (p < end) {
         const uint8_t *start = p;
@@ -508,8 +573,6 @@ static void dump_fixupp(uint8_t type, const uint8_t *data, size_t n)
             putchar('\n');
         } else {
             /* FIXUP subrecord */
-            uint8_t fix;
-
             printf("   FIXUP  %s-relative, type %d (%s)\n"
                    "          record offset %04x",
                    (op & 0x40) ? "segment" : "self",
@@ -517,59 +580,7 @@ static void dump_fixupp(uint8_t type, const uint8_t *data, size_t n)
                    location_descr[(op & 0x3c) >> 2],
                    ((op & 3) << 8) + *p++);
 
-            fix = *p++;
-
-            printf("\n          frame %s%d%s",
-                   (fix & 0x80) ? "thread " : "method F",
-                   ((fix & 0x70) >> 4),
-                   ((fix & 0xc0) == 0xc0) ? "?" : "");
-
-            if ((fix & 0x80) == 0)
-                printf(" (%s)", method_base[((fix >> 4) & 7) + 8]);
-
-            if ((fix & 0xc0) == 0) {
-                idx = get_index(&p);
-                printf(" index %04x", idx);
-                if ((fix >> 4) == 0) {
-                    printf(" '%s'", segment_name(idx));                    
-                }
-                else if ((fix >> 4) == 1) {
-                    printf(" '%s'", group_name(idx));                      
-                }
-                else if ((fix >> 4) == 2) {
-                    printf(" '%s'", external_name(idx));                    
-                }
-            }
-
-            printf("\n          target %s%d",
-                   (fix & 0x08) ? "thread " : "method T",
-                   fix & 7);
-
-            if ((fix & 0x08) == 0)
-                printf(" (%s)", method_base[(fix & 7)]);
-
-
-            if ((fix & 0x08) == 0) {
-                idx = get_index(&p);         
-                printf(" index %04x", idx);
-                if ((fix & 3) == 0) {
-                    printf(" '%s'", segment_name(idx));
-                }
-                else if ((fix & 3) == 1) {
-                    printf(" '%s'", group_name(idx));                    
-                }
-                else if ((fix & 3) == 2) {
-                    printf(" '%s'", external_name(idx));
-                }
-            }
-            if ((fix & 0x04) == 0) {
-                if (big) {
-                    printf(" disp %08x", get_32(&p));
-                } else {
-                    printf(" disp %04x", get_16(&p));
-                }
-            }
-            putchar('\n');
+            dump_fixdat(big, &p);
         }
         hexdump_data(start-data, start, p-start, n-(start-data));
     }
@@ -687,9 +698,24 @@ static void dump_extdef(uint8_t type, const uint8_t *data, size_t n)
 }
 
 
+static void dump_modend(uint8_t type, const uint8_t *data, size_t n)
+{
+    const uint8_t *p = data;
+    
+    if ( *p & 0x80 ) printf("     main module\n");
+    if ( *p & 0x40 ) {
+        printf("     start address:");
+        p++;
+        dump_fixdat( type & 1, &p );
+    }
+    hexdump_data(0, data, n, n);
+}
+
+
 static const dump_func dump_type[256] =
 {
     [0x88] = dump_coment,
+    [0x8a] = dump_modend,
     [0x8c] = dump_extdef,
     [0x90] = dump_pubdef,
     [0x91] = dump_pubdef,
