@@ -14,8 +14,6 @@ The following example was assembled with JWASM 2.17 into an .OBJ file.
 
     .code
     .startup
-    mov ax,@data
-    mov ds,ax
     mov ah,9
     mov dx, offset hellomsg
     int 21h
@@ -50,10 +48,10 @@ hellomsg db 'Hello, World',13,10,'$'
    001e: 05 53 54 41 43 4b 05 53-54 41 43 4b              :  .STACK
    [0008] 'STACK'
    0024: 05 53 54 41 43 4b                                :  .STACK
-98 SEGDEF16      7 bytes, checksum 02 (valid)
-     WORD (A2) PUBLIC (C2) USE16 size 0011
+98 SEGDEF16      7 bytes, checksum F0 (valid)
+     WORD (A2) PUBLIC (C2) USE16 size 0023
      name '_TEXT', class 'CODE'
-   0000: 48 11 00 03 02 01                                :  H.....
+   0000: 48 23 00 03 02 01                                :  H#....
 88 COMENT        5 bytes, checksum A5 (valid)
    [NP=1 NL=0 UD=00] FE ???
    0002: 4f 01                                            :  O.
@@ -70,21 +68,22 @@ hellomsg db 'Hello, World',13,10,'$'
      segment '_DATA'
      segment 'STACK'
    0000: 06 ff 02 ff 03                                   :  .....
-a0 LEDATA16     21 bytes, checksum D5 (valid)
+a0 LEDATA16     39 bytes, checksum 50 (valid)
                 segment '_TEXT', offset 0000
-   0000: b8 00 00 8e d8 b4 09 ba-00 00 cd 21 b8 00 4c cd  :  ...........!..L.
-   0010: 21                                               :  !
-9c FIXUPP16     10 bytes, checksum 58 (valid)
+   0000: ba 00 00 8e da 8c d3 2b-da d1 e3 d1 e3 d1 e3 d1  :  .......+........
+   0010: e3 fa 8e d2 03 e3 fb b4-09 ba 00 00 cd 21 b8 00  :  .............!..
+   0020: 4c cd 21                                         :  L.!
+9c FIXUPP16     10 bytes, checksum 46 (valid)
    FIXUP  segment-relative, type 2 (16-bit segment)
           record offset 0001
           frame method F5 (TARGET index)
           target method T5 (GRPDEF) index 0001 'DGROUP'
-   0000: c8 01 55 01 c4 08 14 01-02                       :  ..U.
+   0000: c8 01 55 01 c4 1a 14 01-02                       :  ..U.
    FIXUP  segment-relative, type 1 (16-bit offset)
-          record offset 0008
+          record offset 001a
           frame method F1 (GRPDEF) index 0001 'DGROUP'
           target method T4 (SEGDEF) index 0002 '_DATA'
-   0004: c4 08 14 01 02                                   :  .....
+   0004: c4 1a 14 01 02                                   :  .....
 a0 LEDATA16     19 bytes, checksum C8 (valid)
                 segment '_DATA', offset 0000
    0000: 48 65 6c 6c 6f 2c 20 57-6f 72 6c 64 0d 0a 24     :  Hello, World..$
