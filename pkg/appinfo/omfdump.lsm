@@ -1,7 +1,7 @@
 Begin3
 Title: OMFDUMP
-Version: 20231208
-Entered-date: 2023-11-29
+Version: 20240202
+Entered-date: 2024-02-02
 Description: dump utility for object module files (.OBJ)
 Keywords:
 Author: bernd-github@boeckmann.io (Bernd Boeckmann), the NASM Authors        

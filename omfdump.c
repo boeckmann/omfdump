@@ -760,7 +760,7 @@ int dump_omf(FILE *f)
     if (!data) return -1;
 
     p = data;
-    while (len >= 3) {
+    while (len >= 3 && *p != 0x1a) {
         uint8_t csum;
         int i;
 
