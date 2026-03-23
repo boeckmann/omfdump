@@ -160,12 +160,12 @@ static void hexdump_data(unsigned int offset, const uint8_t *data,
         printf("   %04x: ", i + offset);
         for (j = 0; j < 16; j++) {
             char sep = (j == 7) ? '-' : ' ';
-            if (i + j < field)
-                printf("%02x%c", data[i + j], sep);
-            else if (i + j < n)
-                printf("xx%c", sep);    /* Beyond end of... */
-            else
+            if (i + j >= n)
                 printf("   ");  /* No separator */
+            else if (i + j < field)
+                printf("%02x%c", data[i + j], sep);
+            else
+                printf("xx%c", sep);    /* Beyond end of... */
         }
         printf(" :  ");
         for (j = 0; j < 16; j++) {
