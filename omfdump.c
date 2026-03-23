@@ -111,7 +111,7 @@ static void *expand_buffer(void *buf, size_t *bufsizep, size_t datasize,
 {
     size_t bufsize = *bufsizep;
 
-    if (likely(bufsize < datasize))
+    if (likely(bufsize > datasize))
         return buf;
 
     if (bufsize < BUFSIZ)
